@@ -1,7 +1,6 @@
 /**
  * Created by WilliamRuppenthal on 1/11/16.
  */
-import java.nio.Buffer;
 import java.util.*;
 import java.io.*;
 import java.sql.Timestamp;
@@ -39,32 +38,22 @@ public class MachineLearning{
             d++;
         }
 
-        boolean[] results=new boolean[200];
-        for(int i=0;i<1000;i++)
-            if(i<100)
-                results[i]=m.learn(i);
-            else if(i>899)
-                results[i-800]=m.learn(i);
-            else
-                m.learn(i);
+        for(int i=0;i<m.games.size()*4/5;i++)
+            m.learn(i);
 
-        int earlyp=0,latep=0;    //early and late percentage correct, respectively
-        int right=0;    //Number of games right
-        for(int i=0;i<100;i++)
-            if(results[i])
+        double right=0,total=0;
+        outcome o;
+        for(int i=m.games.size()*4/5;i<m.games.size();i++){
+            o=m.predict(i);
+            if(o==m.games.get(i).getOutcome())
                 right++;
-        earlyp=right;
+            total++;
+        }
 
-        right=0;
-        for(int i=100;i<200;i++)
-            if(results[i])
-                right++;
-        latep=right;
+        int p=Math.round(Math.round(right/total*100));
+        System.out.println("Precentage correct: "+p);
 
-        System.out.println("Percentage right in first 100: "+earlyp);
-        System.out.println("Percentage right in last 100: "+latep);
-
-        m.logData(earlyp,latep);
+        m.logData(p);
     }
 
     public MachineLearning(){
@@ -73,23 +62,18 @@ public class MachineLearning{
             weights[c]=1;
     }
 
+    /*
+     * Predicts the outcome then adjusts weights based on the actual outcome
+     *
+     * @param   i   The index of the game in the games array
+     * @return      Returns true of the predicted outcome was correct
+     */
     private boolean learn(int i){
         double score=0;
         status[] stats=this.games.get(i).getArr();
         outcome o,actual=this.games.get(i).getOutcome();
 
-        for(int c=0;c<weights.length;c++)
-            if(stats[c]==status.X)
-                score+=this.weights[c];
-            else if(stats[c]==status.O)
-                score-=this.weights[c];
-
-        if(score>.3)
-            o=outcome.WIN;
-        else if(score>-.3)
-            o=outcome.DRAW;
-        else
-            o=outcome.LOSS;
+        o=this.predict(i);
 
         if(o!=actual){
             for(int c=0;c<this.weights.length;c++){
@@ -110,6 +94,40 @@ public class MachineLearning{
         return true;
     }
 
+    /*
+     * Predicts the outcome of the specified game.
+     *
+     * @param   i   The index of the game in the games array
+     * @return      The predicted outcome of the game
+     */
+    private outcome predict(int i){
+        double score=0;
+        status[] stats=this.games.get(i).getArr();
+        outcome o,actual=this.games.get(i).getOutcome();
+
+        for(int c=0;c<weights.length;c++)
+            if(stats[c]==status.X)
+                score+=this.weights[c];
+            else if(stats[c]==status.O)
+                score-=this.weights[c];
+
+        if(score>.3)
+            o=outcome.WIN;
+        else if(score>-.3)
+            o=outcome.DRAW;
+        else
+            o=outcome.LOSS;
+
+        if(this.games.get(i).getOutcome()==outcome.DRAW)
+            System.out.println(score);
+        return o;
+    }
+
+    /*
+     * Reads in the data to the classes games array.
+     *
+     * @param   filename    The name of the data file
+     */
     private void readData(String filename){
         try{
             final Scanner in=new Scanner(new FileReader(filename));
@@ -138,10 +156,15 @@ public class MachineLearning{
         }catch(FileNotFoundException e){}
     }
 
-    private void logData(int earlyp,int latep){
+    /*
+     * Records a timestamp and the percentage correct from the test data.
+     *
+     * @param   p   The percentage correct
+     */
+    private void logData(int p){
         File f=new File("log.txt");
         String s=(new Timestamp(System.currentTimeMillis())).toString()
-                +"\n"+earlyp+"\n"+latep;
+                +"\n"+p;
         try{
             if(!f.exists())
                 f.createNewFile();
