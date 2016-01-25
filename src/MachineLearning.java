@@ -53,6 +53,8 @@ public class MachineLearning{
         int p=Math.round(Math.round(right/total*100));
         System.out.println("Precentage correct: "+p);
 
+        System.out.println(Arrays.toString(m.weights));
+
         m.logData(p);
     }
 
@@ -79,14 +81,14 @@ public class MachineLearning{
             for(int c=0;c<this.weights.length;c++){
                 if(actual==outcome.WIN)
                     if(stats[c]==status.X)
-                        weights[c]+=1/Math.sqrt(i);
+                        weights[c]+=(1/Math.sqrt(i+1));
                     else if(stats[c]==status.O)
-                        weights[c]-=1/Math.sqrt(i);
+                        weights[c]-=(1/Math.sqrt(i+1));
                 else if(actual==outcome.LOSS)
                     if(stats[c]==status.X)
-                        weights[c]-=1/Math.sqrt(i);
+                        weights[c]-=(1/Math.sqrt(i+1));
                     else if(stats[c]==status.O)
-                        weights[c]+=1/Math.sqrt(i);
+                        weights[c]+=(1/Math.sqrt(i+1));
             }
 
             return false;
@@ -118,8 +120,8 @@ public class MachineLearning{
         else
             o=outcome.LOSS;
 
-        if(this.games.get(i).getOutcome()==outcome.DRAW)
-            System.out.println(score);
+//        if(this.games.get(i).getOutcome()==outcome.DRAW)
+//            System.out.println(score);
         return o;
     }
 
