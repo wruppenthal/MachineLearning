@@ -23,6 +23,8 @@ enum status{
 
 public class MachineLearning{
     public List<Game> games=new ArrayList<Game>();
+    public List<Game> practice=new ArrayList<Game>();
+    public List<Game> test=new ArrayList<Game>();
     private double[] weights;
 
 
@@ -38,26 +40,49 @@ public class MachineLearning{
             d++;
         }
 
-        for(int i=0;i<m.games.size()*4/5;i++)
-            m.learn(i);
+        /* Set up game arrays */
+        m.practice=m.games.subList(0,m.games.size()*4/5);
+        m.test=m.games.subList(m.games.size()*4/5,m.games.size());
 
-        double right=0,total=0;
-        outcome o;
-        for(int i=m.games.size()*4/5;i<m.games.size();i++){
-            o=m.predict(i);
-            if(o==m.games.get(i).getOutcome())
-                right++;
-            total++;
+        for(int i=0;i<1000000;i++)
+            m.learn(i,m.practice);
+
+        double wr=0,wt=0,dr=0,dt=0,lr=0,lt=0;   //Wins right, wins total, etc.
+        outcome o,actual;
+        for(int i=0;i<m.test.size();i++){
+            o=m.predict(i,m.test);
+            actual=m.test.get(i).getOutcome();
+            if(o==outcome.WIN){
+                if(o == actual)
+                    wr++;
+                wt++;
+            }
+            else if(o==outcome.LOSS){
+                if(o == actual)
+                    lr++;
+                lt++;
+            }
+            else{
+                if(o==actual)
+                    dr++;
+                dt++;
+            }
         }
 
-        int p=Math.round(Math.round(right/total*100));
-        System.out.println("Precentage correct: "+p);
+        int p=Math.round(Math.round((wr+lr+dr)/(wt+lt+dt)*100));
+        System.out.println("Percentage correct: "+p);
+        System.out.println("Wins correct: "+wr/wt*100);
+        System.out.println("Draws correct: "+dr/dt*100);
+        System.out.println("Losses correct: "+lr/lt*100);
 
         System.out.println(Arrays.toString(m.weights));
 
         m.logData(p);
     }
 
+    /*
+     * Sets up arrays and such
+     */
     public MachineLearning(){
         weights=new double[42];
         for(int c=0;c<weights.length;c++)
@@ -70,25 +95,29 @@ public class MachineLearning{
      * @param   i   The index of the game in the games array
      * @return      Returns true of the predicted outcome was correct
      */
-    private boolean learn(int i){
-        double score=0;
-        status[] stats=this.games.get(i).getArr();
-        outcome o,actual=this.games.get(i).getOutcome();
+    private boolean learn(int i, List<Game> l){
+        int actualI=i;
+        if(i>=l.size())
+            i%=l.size();
 
-        o=this.predict(i);
+        double score=0;
+        status[] stats=l.get(i).getArr();
+        outcome o,actual=l.get(i).getOutcome();
+
+        o=this.predict(i,l);
 
         if(o!=actual){
             for(int c=0;c<this.weights.length;c++){
                 if(actual==outcome.WIN)
                     if(stats[c]==status.X)
-                        weights[c]+=(1/Math.sqrt(i+1));
+                        weights[c]+=(30/Math.pow(actualI+1,.7));
                     else if(stats[c]==status.O)
-                        weights[c]-=(1/Math.sqrt(i+1));
+                        weights[c]-=(30/Math.pow(actualI+1,.7));
                 else if(actual==outcome.LOSS)
                     if(stats[c]==status.X)
-                        weights[c]-=(1/Math.sqrt(i+1));
+                        weights[c]-=(30/Math.pow(actualI+1,.7));
                     else if(stats[c]==status.O)
-                        weights[c]+=(1/Math.sqrt(i+1));
+                        weights[c]+=(30/Math.pow(actualI+1,.7));
             }
 
             return false;
@@ -102,10 +131,12 @@ public class MachineLearning{
      * @param   i   The index of the game in the games array
      * @return      The predicted outcome of the game
      */
-    private outcome predict(int i){
+    private outcome predict(int i,List<Game> l){
+        if(i>=l.size())
+            i%=l.size();
         double score=0;
-        status[] stats=this.games.get(i).getArr();
-        outcome o,actual=this.games.get(i).getOutcome();
+        status[] stats=l.get(i).getArr();
+        outcome o;
 
         for(int c=0;c<weights.length;c++)
             if(stats[c]==status.X)
@@ -115,7 +146,7 @@ public class MachineLearning{
 
         if(score>.3)
             o=outcome.WIN;
-        else if(score>-.3)
+        else if(score>.1)
             o=outcome.DRAW;
         else
             o=outcome.LOSS;
