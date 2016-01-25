@@ -25,7 +25,10 @@ public class MachineLearning{
     public List<Game> games=new ArrayList<Game>();
     public List<Game> practice=new ArrayList<Game>();
     public List<Game> test=new ArrayList<Game>();
+
     private double[] weights;
+    private double winCutOff;
+    private double drawCutOff;
 
 
     public static void main(String[] args){
@@ -44,7 +47,7 @@ public class MachineLearning{
         m.practice=m.games.subList(0,m.games.size()*4/5);
         m.test=m.games.subList(m.games.size()*4/5,m.games.size());
 
-        for(int i=0;i<1000000;i++)
+        for(int i=0;i<10000000;i++)
             m.learn(i,m.practice);
 
         double wr=0,wt=0,dr=0,dt=0,lr=0,lt=0;   //Wins right, wins total, etc.
@@ -52,12 +55,12 @@ public class MachineLearning{
         for(int i=0;i<m.test.size();i++){
             o=m.predict(i,m.test);
             actual=m.test.get(i).getOutcome();
-            if(o==outcome.WIN){
+            if(actual==outcome.WIN){
                 if(o == actual)
                     wr++;
                 wt++;
             }
-            else if(o==outcome.LOSS){
+            else if(actual==outcome.LOSS){
                 if(o == actual)
                     lr++;
                 lt++;
@@ -75,6 +78,9 @@ public class MachineLearning{
         System.out.println("Draws correct: "+dr/dt*100);
         System.out.println("Losses correct: "+lr/lt*100);
 
+        System.out.println("Win cutoff: "+m.winCutOff);
+        System.out.println("Draw cutoff: "+m.drawCutOff+"\n");
+
         System.out.println(Arrays.toString(m.weights));
 
         m.logData(p);
@@ -86,7 +92,10 @@ public class MachineLearning{
     public MachineLearning(){
         weights=new double[42];
         for(int c=0;c<weights.length;c++)
-            weights[c]=1;
+            weights[c]=0;
+
+        winCutOff=0;
+        drawCutOff=0;
     }
 
     /*
@@ -96,11 +105,11 @@ public class MachineLearning{
      * @return      Returns true of the predicted outcome was correct
      */
     private boolean learn(int i, List<Game> l){
-        int actualI=i;
+
         if(i>=l.size())
             i%=l.size();
+        int actualI=i;
 
-        double score=0;
         status[] stats=l.get(i).getArr();
         outcome o,actual=l.get(i).getOutcome();
 
@@ -110,15 +119,26 @@ public class MachineLearning{
             for(int c=0;c<this.weights.length;c++){
                 if(actual==outcome.WIN)
                     if(stats[c]==status.X)
-                        weights[c]+=(30/Math.pow(actualI+1,.7));
+                        weights[c]+=(1/Math.pow(actualI+1,0.95));
                     else if(stats[c]==status.O)
-                        weights[c]-=(30/Math.pow(actualI+1,.7));
+                        weights[c]-=(1/Math.pow(actualI+1,0.95));
                 else if(actual==outcome.LOSS)
                     if(stats[c]==status.X)
-                        weights[c]-=(30/Math.pow(actualI+1,.7));
+                        weights[c]-=(1/Math.pow(actualI+1,0.95));
                     else if(stats[c]==status.O)
-                        weights[c]+=(30/Math.pow(actualI+1,.7));
+                        weights[c]+=(1/Math.pow(actualI+1,0.95));
             }
+
+            if(actual==outcome.WIN)
+                this.winCutOff-=(1/Math.pow(actualI+1,0.95));
+            else if(actual==outcome.LOSS)
+                this.drawCutOff+=(1/Math.pow(actualI+1,0.95));
+            else{
+                this.winCutOff+=(1/Math.pow(actualI+1,0.95));
+                this.drawCutOff-=(1/Math.pow(actualI+1,0.95));
+            }
+            if(this.winCutOff<this.drawCutOff)
+                this.drawCutOff=this.winCutOff;
 
             return false;
         }
@@ -144,9 +164,9 @@ public class MachineLearning{
             else if(stats[c]==status.O)
                 score-=this.weights[c];
 
-        if(score>.3)
+        if(score>this.winCutOff)
             o=outcome.WIN;
-        else if(score>.1)
+        else if(score>this.drawCutOff)
             o=outcome.DRAW;
         else
             o=outcome.LOSS;
