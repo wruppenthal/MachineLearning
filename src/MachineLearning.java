@@ -47,7 +47,7 @@ public class MachineLearning{
         m.practice=m.games.subList(0,m.games.size()*4/5);
         m.test=m.games.subList(m.games.size()*4/5,m.games.size());
 
-        for(int i=0;i<10000000;i++)
+        for(int i=0;i<100000;i++)
             m.learn(i,m.practice);
 
         double wr=0,wt=0,dr=0,dt=0,lr=0,lt=0;   //Wins right, wins total, etc.
